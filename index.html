@@ -122,9 +122,46 @@ window.HOW_CONFIG = {
   instagramUrl: '',
   linkedinUrl:  '',
   xUrl:         '',
-  brochureUrl:  ''    // public PDF link from Supabase Storage (optional)
+  brochureUrl:  '',   // public PDF link from Supabase Storage (optional)
+  chatFunction: 'how-chat'  // Supabase Edge Function for the AI chat. Set to '' to make the button open WhatsApp instead.
 };
 </script>
+
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.chat-panel{position:fixed;right:20px;bottom:88px;z-index:40;width:min(390px,calc(100vw - 32px));height:min(580px,calc(100dvh - 120px));display:flex;flex-direction:column;background:#0F0A19;color:#F5EFF7;border:1px solid rgba(255,255,255,.12);border-radius:22px;box-shadow:0 40px 90px -30px rgba(156,107,229,.65);overflow:hidden;font-family:"Geist",system-ui,sans-serif}
+.chat-panel[hidden]{display:none!important}
+.chat-head{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 18px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(100deg,rgba(242,168,112,.12),rgba(229,107,182,.10),rgba(156,107,229,.12))}
+.chat-mark{width:34px;height:39px;flex:none;background-size:contain;background-repeat:no-repeat;background-position:center}
+.chat-head-text{flex:1;min-width:0;display:flex;flex-direction:column}
+.chat-head-text h2{margin:0;font-size:16px;font-weight:600;color:#F5EFF7}
+.chat-head-text span{font-size:12px;color:#B9ADC6}
+.chat-x{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:#CFC4DA;font-size:26px;cursor:pointer}
+.chat-x:hover{background:rgba(255,255,255,.08)}
+.chat-log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.msg{max-width:85%;padding:10px 13px;border-radius:16px;font-size:15px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.msg.bot{align-self:flex-start;background:#1C1428;border-bottom-left-radius:5px}
+.msg.me{align-self:flex-end;background:linear-gradient(100deg,#F2A870,#E56BB6 55%,#9C6BE5);color:#150A1A;border-bottom-right-radius:5px}
+.msg.err{align-self:flex-start;background:rgba(229,107,182,.12);border:1px solid rgba(229,107,182,.35)}
+.msg-act{align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(242,168,112,.5);background:transparent;color:#F2A870;font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+.msg-act:hover{background:rgba(242,168,112,.1)}
+.typing{align-self:flex-start;display:flex;gap:5px;padding:14px;background:#1C1428;border-radius:16px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#B9ADC6;animation:how-dot 1.2s infinite ease-in-out}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes how-dot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.chat-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px}
+.chip{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:transparent;color:#E8DEEF;font:inherit;font-size:13px;cursor:pointer}
+.chip:hover{background:rgba(255,255,255,.07)}
+.chat-form{display:flex;gap:8px;align-items:flex-end;padding:12px;border-top:1px solid rgba(255,255,255,.08)}
+.chat-form textarea{flex:1;min-width:0;min-height:44px;max-height:120px;padding:11px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:#160F22;color:#F5EFF7;font:inherit;font-size:16px;resize:none}
+.chat-form textarea:focus{outline:2px solid #E56BB6;outline-offset:1px}
+.chat-send{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:linear-gradient(135deg,#F2A870,#E56BB6 55%,#9C6BE5);color:#150A1A;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.chat-send[disabled]{opacity:.5;cursor:progress}
+.chat-foot{margin:0;padding:0 16px 12px;font-size:12px;color:#8F8399}
+.chat-foot a{color:#F2A870}
+@media (max-width:520px){.chat-panel{right:0;left:0;bottom:0;width:100%;height:min(88dvh,640px);border-radius:22px 22px 0 0}}
+@media (prefers-reduced-motion: reduce){.typing i{animation:none}}
+</style>
 </head>
 <body>
 <div style="width: 100%; overflow-x: hidden; background: #050408; color: #F5EFF7; font-family: 'Geist', system-ui, sans-serif">
@@ -811,10 +848,10 @@ window.HOW_CONFIG = {
   </footer>
 
   <!-- FLOATING WHATSAPP -->
-  <a href="https://chat.whatsapp.com/" data-wa aria-label="Questions? Chat with the HOW team on WhatsApp" class="btn-main" style="position: fixed; right: 20px; bottom: 20px; z-index: 20; display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 20px; border-radius: 999px; background: #F5EFF7; color: #1A1222; font-weight: 600; font-size: 15px; text-decoration: none; box-shadow: 0 16px 40px -14px rgba(0,0,0,0.6)">
+  <button type="button" id="chat-open" aria-controls="chat-panel" aria-expanded="false" class="btn-main" style="position: fixed; right: 20px; bottom: 20px; z-index: 20; display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 20px; border-radius: 999px; background: #F5EFF7; color: #1A1222; font-weight: 600; font-size: 15px; text-decoration: none; box-shadow: 0 16px 40px -14px rgba(0,0,0,0.6); border: 0; cursor: pointer; font-family: inherit">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.8 7L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
     Chat with us
-  </a>
+  </button>
 </div>
 
 <dialog id="dlg-manifesto" class="how-dialog" aria-labelledby="dlg-manifesto-title">
@@ -1018,6 +1055,7 @@ window.HOW_CONFIG = {
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
     var first = f.querySelector('input:not([type=hidden]),select'); if (first) first.focus();
   }
+  window.HOW_openDialog = openDialog;
   document.querySelectorAll('.how-dialog').forEach(function (d) {
     var f = d.querySelector('form');
     handle(f, f.getAttribute('data-kind'), function () {
@@ -1095,6 +1133,146 @@ window.HOW_CONFIG = {
       scene.style.setProperty('--ry', (x * 26).toFixed(2) + 'deg'); scene.style.setProperty('--rx', (-y * 18).toFixed(2) + 'deg'); });
     scene.addEventListener('mouseleave', function () { scene.style.setProperty('--ry', '0deg'); scene.style.setProperty('--rx', '0deg'); });
   }
+})();
+</script>
+
+<section id="chat-panel" class="chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-title" hidden>
+  <header class="chat-head">
+    <span class="chat-mark" aria-hidden="true"></span>
+    <div class="chat-head-text"><h2 id="chat-title">Ask House of Wise</h2><span>AI assistant · replies in seconds</span></div>
+    <button type="button" class="chat-x" id="chat-close" aria-label="Close chat">×</button>
+  </header>
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <div class="chat-chips" id="chat-chips">
+    <button type="button" class="chip">How do I start a chapter?</button>
+    <button type="button" class="chip">What is the HOW Score?</button>
+    <button type="button" class="chip">When is the next event?</button>
+    <button type="button" class="chip">What is Wize?</button>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <label for="chat-input" class="sr-only">Your message</label>
+    <textarea id="chat-input" rows="1" maxlength="1000" placeholder="Ask anything about House of Wise"></textarea>
+    <button type="submit" class="chat-send" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+    </button>
+  </form>
+  <p class="chat-foot">AI can get things wrong. <a href="https://chat.whatsapp.com/" data-wa>Talk to a person on WhatsApp</a></p>
+</section>
+<script>
+(function () {
+  var C = window.HOW_CONFIG || {};
+  var KEY = C.supabaseKey || '';
+  var READY = KEY && KEY.indexOf('PASTE_') !== 0 && C.chatFunction;
+  var openBtn = document.getElementById('chat-open');
+  var panel = document.getElementById('chat-panel');
+  if (!openBtn || !panel) return;
+  var waUrl = C.whatsappUrl || 'https://chat.whatsapp.com/';
+  panel.querySelectorAll('[data-wa]').forEach(function (a) { a.href = waUrl; a.target = '_blank'; a.rel = 'noopener'; });
+
+  // No chat configured: the button just opens WhatsApp
+  if (!READY) {
+    openBtn.addEventListener('click', function () { window.open(waUrl, '_blank', 'noopener'); });
+    return;
+  }
+
+  var log = document.getElementById('chat-log');
+  var form = document.getElementById('chat-form');
+  var input = document.getElementById('chat-input');
+  var send = form.querySelector('.chat-send');
+  var chips = document.getElementById('chat-chips');
+  var mark = panel.querySelector('.chat-mark');
+  var logo = document.querySelector('header img');
+  if (logo && logo.src) mark.style.backgroundImage = 'url("' + logo.src + '")';
+
+  var WELCOME = "Hi! I'm the House of Wise assistant. Ask me about starting a chapter, events, the HOW Score, Wize, or bringing House of Wise to your college.";
+  var history = [];
+  try { history = JSON.parse(sessionStorage.getItem('how-chat') || '[]'); } catch (e) { history = []; }
+  function save() { try { sessionStorage.setItem('how-chat', JSON.stringify(history.slice(-20))); } catch (e) {} }
+
+  var ACTIONS = {
+    start_chapter: ['Start a chapter', function () { close(); location.hash = 'start'; document.getElementById('start').scrollIntoView({ behavior: 'smooth' }); }],
+    college_form:  ['Bring House of Wise to your college', function () { close(); window.HOW_openDialog && window.HOW_openDialog('college'); }],
+    partner_form:  ['Partner with us', function () { close(); window.HOW_openDialog && window.HOW_openDialog('partner'); }],
+    wize_form:     ['Get early access to Wize', function () { close(); window.HOW_openDialog && window.HOW_openDialog('wize'); }],
+    manifesto:     ['Sign the manifesto', function () { close(); window.HOW_openDialog && window.HOW_openDialog('manifesto'); }],
+    events:        ['See upcoming events', function () { close(); document.getElementById('events').scrollIntoView({ behavior: 'smooth' }); }],
+    whatsapp:      ['Talk to a person on WhatsApp', null]
+  };
+
+  function bubble(text, who) {
+    var d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = text;
+    log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
+  }
+  function actionButton(name) {
+    var a = ACTIONS[name]; if (!a) return;
+    var el;
+    if (a[1]) { el = document.createElement('button'); el.type = 'button'; el.addEventListener('click', a[1]); }
+    else { el = document.createElement('a'); el.href = waUrl; el.target = '_blank'; el.rel = 'noopener'; }
+    el.className = 'msg-act'; el.textContent = a[0] + ' →';
+    log.appendChild(el); log.scrollTop = log.scrollHeight;
+  }
+  function render() {
+    log.textContent = '';
+    bubble(WELCOME, 'bot');
+    history.forEach(function (m) {
+      bubble(m.content, m.role === 'user' ? 'me' : 'bot');
+      if (m.action) actionButton(m.action);
+    });
+    chips.hidden = history.length > 0;
+  }
+
+  function open() {
+    panel.hidden = false; openBtn.setAttribute('aria-expanded', 'true');
+    render(); setTimeout(function () { input.focus(); }, 50);
+  }
+  function close() {
+    panel.hidden = true; openBtn.setAttribute('aria-expanded', 'false'); openBtn.focus();
+  }
+  openBtn.addEventListener('click', function () { panel.hidden ? open() : close(); });
+  document.getElementById('chat-close').addEventListener('click', close);
+  panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  var ERR = {
+    rate_limited: "You're sending messages quickly. Please wait a few minutes, or message the team on WhatsApp.",
+    busy: 'Lots of people are chatting right now. Try again in a minute, or message the team on WhatsApp.',
+    fallback: "I can't answer right now. The team can help you on WhatsApp."
+  };
+
+  var busy = false;
+  function ask(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    busy = true; send.disabled = true; chips.hidden = true;
+    history.push({ role: 'user', content: text.slice(0, 1000) }); save();
+    bubble(text, 'me'); input.value = ''; input.style.height = '';
+    var t = document.createElement('div'); t.className = 'typing'; t.setAttribute('aria-label', 'Assistant is typing');
+    t.innerHTML = '<i></i><i></i><i></i>'; log.appendChild(t); log.scrollTop = log.scrollHeight;
+
+    var headers = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };
+    var payload = history.slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
+    fetch(C.supabaseUrl + '/functions/v1/' + C.chatFunction, { method: 'POST', headers: headers, body: JSON.stringify({ messages: payload }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._status = r.status; return j; }); })
+      .catch(function () { return { error: 'network' }; })
+      .then(function (j) {
+        t.remove(); busy = false; send.disabled = false;
+        if (j && j.reply) {
+          var action = j.actions && j.actions[0];
+          history.push({ role: 'assistant', content: j.reply, action: action || null }); save();
+          bubble(j.reply, 'bot'); if (action) actionButton(action);
+        } else {
+          if (j && j.error) console.warn('Chat error', j.error, j._status || '');
+          history.pop(); save();
+          var e = document.createElement('div'); e.className = 'msg err'; e.textContent = ERR[j && j.error] || ERR.fallback;
+          log.appendChild(e); actionButton('whatsapp');
+        }
+        input.focus();
+      });
+  }
+
+  form.addEventListener('submit', function (e) { e.preventDefault(); ask(input.value); });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+  input.addEventListener('input', function () { input.style.height = ''; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; });
+  chips.querySelectorAll('.chip').forEach(function (c) { c.addEventListener('click', function () { ask(c.textContent); }); });
 })();
 </script>
 </body>
